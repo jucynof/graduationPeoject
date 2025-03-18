@@ -1,0 +1,17 @@
+{
+  "isIID": "True",
+  "num_clients": 100,
+  "client_rate": 0.1,
+  "batchSize": 64,
+  "random_seed": 66,
+  "rounds": 100,
+  "lrIID": 1e-05,
+  "lrNoIID": 0.0001,
+  "localEpoch": 10,
+  "alpha": 0.5,
+  "w": 0.5,
+  "normalizeMeanTrain": 0.28604060411453247,
+  "normalizeStdTrain": 0.35302427411079407,
+  "normalizeMeanTest": 0.2868492603302002,
+  "normalizeStdTest": 0.35244420170783997
+}
