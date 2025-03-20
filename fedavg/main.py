@@ -77,7 +77,7 @@ if __name__ == "__main__":
     # ----------------------------------设置参数----------------------------------
     dev = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     print(dev)
-    config["dev"]=dev
+    # config["dev"]=dev
     rounds=config["rounds"]
     numClients=config["num_clients"]
     numbers = np.arange(numClients)  # 创建一个包含numClients个数字的数组
@@ -109,14 +109,21 @@ if __name__ == "__main__":
     accuracyGlobal=[]
     lastRound=0
     if os.path.exists(config["glocalParameterPath"]):
+        print("衔接上次继续训练")
         global_parameters = torch.load(config["glocalParameterPath"])
         with open('./test_accuracy.csv', 'r') as file:
             csv_reader = csv.reader(file)
             for row in csv_reader:
-                accuracyGlobal.append(row[0])  # 目标列是第一列
+                try:
+                    # 转换为浮点数并保留精度
+                    accuracyGlobal.append(float(row[0].strip()))
+                except (ValueError, IndexError) as e:
+                    print(f"第{len(accuracyGlobal) + 1}行转换失败：{e}")
+                    accuracyGlobal.append(None)  # 保留空值标记异常数据
         lastRound=config["lastRound"]
     else:
         # 通信前的accuracy
+        print("重新训练")
         accuracy = test_accuracy()
         global_loss, global_acc = accuracy.test_accuracy(net, global_parameters, data.getTestData(), dev, loss_func)
         print(
@@ -126,7 +133,7 @@ if __name__ == "__main__":
     # clients与server之间通信
     w_attenaution=np.array([1 for i in range(config["num_clients"])],dtype=np.float32)#定义每个客户端的打分的衰减率
     x=0
-    for curr_round in range(lastRound, lastRound+rounds + 1):
+    for curr_round in range(lastRound+1, lastRound+rounds + 1):
         local_loss = []
         client_params = {}
         acc = np.zeros(config["num_clients"])
@@ -146,9 +153,9 @@ if __name__ == "__main__":
         scores = Evaluate1(acc, loss, config["w"],w_attenaution)
         indices = np.argsort(-scores)[:int(config["num_clients"] * config["client_rate"])]  # 降序排序后取前n个索引
         print("第%d轮次通信中得分最高的客户端为:"%(curr_round),indices)
-        print("他们的得分如下：")
-        for ind in indices:
-            print(scores[ind])
+        # print("他们的得分如下：")
+        # for ind in indices:
+        #     print(scores[ind])
             #重新计算衰减率
         for i in range(config["num_clients"]):
             if i in indices:
@@ -184,8 +191,9 @@ if __name__ == "__main__":
         x=x+1
         if x % 10 == 0:
             torch.save(net.state_dict(), config["glocalParameterPath"])
-            np.savetxt('./test_accuracy.csv', accuracyGlobal.reshape(-1, 1), delimiter=',', fmt='%.6f')
-            config["lastRound"]=curr_round
+            listaccuracy = np.array(accuracyGlobal)
+            np.savetxt('./test_accuracy.csv', listaccuracy.reshape(-1, 1), delimiter=',', fmt='%.6f')
+            config["lastRound"] = curr_round
             with open('config.json', 'w', encoding='utf-8') as f:
                 json.dump(config, f, ensure_ascii=False, indent=4)
             f.close()

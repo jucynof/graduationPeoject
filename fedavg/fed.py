@@ -1,9 +1,10 @@
+import torch
 from torch.utils.data import DataLoader
 # ----------------------------------客户端----------------------------------
 class client:
 
     def __init__(self,config):
-        self.dev = config["dev"]
+        self.dev = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
         self.train_DataLoader = None
         self.local_parameters = None
         self.localEpoch=None

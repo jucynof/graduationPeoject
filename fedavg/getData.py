@@ -158,6 +158,7 @@ class getData:
         np.random.seed(config["random_seed"])
         np.random.shuffle(self.data_indices)
         self.split_indices = np.array_split(self.data_indices, config["num_clients"])
+
     def getTrainData(self):
         return self.train_dataset
     def getTestData(self):
