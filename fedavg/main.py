@@ -13,29 +13,56 @@ with open("config.json") as f:
 # ----------------------------------在测试集上评估模型的性能, 计算准确率和平均损失----------------------------------
 class test_accuracy:
 
-    def test_accuracy(self, net, parameters, testDateset, dev, lossFun):
+    def test_accuracy(self, net, parameters, testDataset, dev, lossFun):
         # 存储损失
-        loss_collector = []
-        testDataLoader=DataLoader(testDateset, batch_size=config["batchSize"], shuffle=False)
-        with torch.no_grad():
-            net.load_state_dict(parameters, strict=True)
-            sum_accu = 0
-            num = 0
-            loss_collector.clear()
-            # 载入测试集
-            for data, label in testDataLoader:
-                data, label = data.to(dev), label.to(dev)
-                output = net(data)
-                loss = lossFun(output, label)
-                # loss = 1
-                loss_collector.append(loss.item())
-                output = torch.argmax(output, dim=1)
-                sum_accu += (output == label).float().mean()
-                num += 1
 
-            accuracy = sum_accu / num
-            avg_loss = sum(loss_collector) / len(loss_collector)
-        return avg_loss, accuracy
+        testDataLoader=DataLoader(testDataset, batch_size=config["batchSize"], shuffle=False)
+        total_correct = 0
+        total_samples = 0
+        total_loss = 0.0
+        net.load_state_dict(parameters, strict=True)
+        net.eval()  # 确保模型处于评估模式
+        for data, label in testDataLoader:
+            data, label = data.to(dev), label.to(dev)
+            output = net(data)
+            print(output)
+            # 计算损失
+            loss = lossFun(output, label)
+            batch_loss = loss.item()
+            batch_size = label.size(0)
+            total_loss += batch_loss * batch_size  # 累加加权损失
+            # 计算正确数
+            preds = torch.argmax(output, dim=1)
+            correct = (preds == label).sum().item()
+            total_correct += correct
+            total_samples += batch_size
+        correctRate = total_correct / total_samples
+        lossAvg = total_loss / total_samples
+        return correctRate,lossAvg
+
+
+        # loss_collector = []
+        # with torch.no_grad():
+        #     net.load_state_dict(parameters, strict=True)
+        #     sum_accu = 0
+        #     num = 0
+        #     loss_collector.clear()
+        #     # 载入测试集
+        #     for data, label in testDataLoader:
+        #         data, label = data.to(dev), label.to(dev)
+        #         output = net(data)
+        #         print(output)
+        #         loss = lossFun(output, label)
+        #         # loss = 1
+        #         loss_collector.append(loss.item())
+        #         output = torch.argmax(output, dim=1)
+        #         sum_accu += (output == label).float().mean()
+        #         print(sum_accu)
+        #         num += 1
+        #
+        #     accuracy = sum_accu / num
+        #     avg_loss = sum(loss_collector) / len(loss_collector)
+        # return avg_loss, accuracy
 
 if __name__ == "__main__":
     #获取数据
@@ -70,9 +97,15 @@ if __name__ == "__main__":
 
     # 定义变量global_parameters
     global_parameters = net.state_dict()
+    #储存每次通信accuracy
+    accuracyGlobal=np.array([0 for i in range(config["rounds"]+1)],dtype=np.float32)
+    #通信前的accuracy
+    accuracy = test_accuracy()
+    global_loss, global_acc = accuracy.test_accuracy(net, global_parameters, data.getTestData(), dev, loss_func)
+    accuracyGlobal[0]=global_acc
     # clients与server之间通信
     w_attenaution=np.array([1 for i in range(config["num_clients"])],dtype=np.float32)#定义每个客户端的分的衰减率
-    accuracyGlobal=np.array([0 for i in range(config["rounds"]+1)],dtype=np.float32)
+
     for curr_round in range(1, rounds + 1):
         local_loss = []
         client_params = {}
