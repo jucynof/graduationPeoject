@@ -56,7 +56,7 @@ class server:
         w = self.client_params
         weights_avg = w[0]
         for k in weights_avg.keys():
-            for i in range(1, len(w)):
+            for i in range(0, len(w)):
                 weights_avg[k] = weights_avg[k] + w[i][k]
             weights_avg[k] = weights_avg[k] / len(w)
         return weights_avg

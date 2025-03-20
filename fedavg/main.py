@@ -25,7 +25,6 @@ class test_accuracy:
         for data, label in testDataLoader:
             data, label = data.to(dev), label.to(dev)
             output = net(data)
-            print(output)
             # 计算损失
             loss = lossFun(output, label)
             batch_loss = loss.item()
@@ -66,7 +65,14 @@ class test_accuracy:
 
 if __name__ == "__main__":
     #获取数据
-    data=getNoIIDData(config)
+    # 定义优化器
+    if config["isIID"]:
+        print("IID")
+        data = getData(config)
+    else:
+        print("Not IID")
+        data = getNoIIDData(config)
+
     # ----------------------------------设置参数----------------------------------
     dev = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     print(dev)
@@ -102,14 +108,16 @@ if __name__ == "__main__":
     #通信前的accuracy
     accuracy = test_accuracy()
     global_loss, global_acc = accuracy.test_accuracy(net, global_parameters, data.getTestData(), dev, loss_func)
+    print(
+        '----------------------------------[Round: %d] accuracy: %f  loss: %f----------------------------------'
+        % (0, global_acc, global_loss))
     accuracyGlobal[0]=global_acc
     # clients与server之间通信
-    w_attenaution=np.array([1 for i in range(config["num_clients"])],dtype=np.float32)#定义每个客户端的分的衰减率
-
+    w_attenaution=np.array([1 for i in range(config["num_clients"])],dtype=np.float32)#定义每个客户端的打分的衰减率
+    x=0
     for curr_round in range(1, rounds + 1):
         local_loss = []
         client_params = {}
-
         acc = np.zeros(config["num_clients"])
         loss = np.zeros(config["num_clients"])
         for k in range(config["num_clients"]):
@@ -160,6 +168,8 @@ if __name__ == "__main__":
         global_loss, global_acc = accuracy.test_accuracy(net, global_parameters, data.getTestData(), dev, loss_func)
         print(
             '----------------------------------[Round: %d] accuracy: %f  loss: %f----------------------------------'
-             % (curr_round, global_acc, global_loss))
+             % (curr_round+1, global_acc, global_loss))
         accuracyGlobal[curr_round] = global_acc
-    np.savetxt('./Zero.csv', accuracyGlobal.reshape(-1, 1), delimiter=',', fmt='%.6f')
+        x=x+1
+        if x % 10 == 0:
+            np.savetxt('./Zero.csv', accuracyGlobal.reshape(-1, 1), delimiter=',', fmt='%.6f')
