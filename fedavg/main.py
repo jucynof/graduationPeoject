@@ -37,7 +37,7 @@ class test_accuracy:
             total_samples += batch_size
         correctRate = total_correct / total_samples
         lossAvg = total_loss / total_samples
-        return correctRate,lossAvg
+        return lossAvg,correctRate
 
 
         # loss_collector = []
@@ -65,7 +65,6 @@ class test_accuracy:
 
 if __name__ == "__main__":
     #获取数据
-    # 定义优化器
     if config["isIID"]:
         print("IID")
         data = getData(config)
@@ -131,7 +130,7 @@ if __name__ == "__main__":
                                                       global_parameters=global_parameters,
                                                       trainDataSet=subTrainDateset, dev=dev)
             accuracy = test_accuracy()
-            acc[k], loss[k] = accuracy.test_accuracy(net, local_parameters, data.getTestData(), dev, loss_func)
+            loss[k], acc[k] = accuracy.test_accuracy(net, local_parameters, data.getTestData(), dev, loss_func)
         scores = Evaluate1(acc, loss, config["w"],w_attenaution)
         indices = np.argsort(-scores)[:int(config["num_clients"] * config["client_rate"])]  # 降序排序后取前n个索引
         print("第%d轮次通信中得分最高的客户端为:"%(curr_round),indices)
@@ -168,7 +167,7 @@ if __name__ == "__main__":
         global_loss, global_acc = accuracy.test_accuracy(net, global_parameters, data.getTestData(), dev, loss_func)
         print(
             '----------------------------------[Round: %d] accuracy: %f  loss: %f----------------------------------'
-             % (curr_round+1, global_acc, global_loss))
+             % (curr_round, global_acc, global_loss))
         accuracyGlobal[curr_round] = global_acc
         x=x+1
         if x % 10 == 0:
