@@ -71,10 +71,12 @@ if __name__ == "__main__":
     # 定义变量global_parameters
     global_parameters = net.state_dict()
     # clients与server之间通信
+    w_attenaution=np.array([1 for i in range(config["num_clients"])],dtype=np.float32)#定义每个客户端的分的衰减率
+    accuracyGlobal=np.array([0 for i in range(config["rounds"]+1)],dtype=np.float32)
     for curr_round in range(1, rounds + 1):
         local_loss = []
         client_params = {}
-        idChoosed = np.random.choice(numbers, numClientsChoosed, replace=True)
+
         acc = np.zeros(config["num_clients"])
         loss = np.zeros(config["num_clients"])
         for k in range(config["num_clients"]):
@@ -89,11 +91,20 @@ if __name__ == "__main__":
                                                       trainDataSet=subTrainDateset, dev=dev)
             accuracy = test_accuracy()
             acc[k], loss[k] = accuracy.test_accuracy(net, local_parameters, data.getTestData(), dev, loss_func)
-        scores = Evaluate1(acc, loss, config["w"])
+        scores = Evaluate1(acc, loss, config["w"],w_attenaution)
         indices = np.argsort(-scores)[:int(config["num_clients"] * config["client_rate"])]  # 降序排序后取前n个索引
-        print(indices)
+        print("第%d轮次通信中得分最高的客户端为:"%(curr_round),indices)
+        print("他们的得分如下：")
         for ind in indices:
             print(scores[ind])
+            #重新计算衰减率
+        for i in range(config["num_clients"]):
+            if i in indices:
+                w_attenaution[i]=w_attenaution[i]*config["attenuationRate"]
+            else:
+                w_attenaution[i]=1
+        #idChoosed = np.random.choice(numbers, numClientsChoosed, replace=True)#随机抽取
+        idChoosed=indices#根据得分抽取
         for k in range(numClientsChoosed):
             cur_client = client(config)
             subTrainDateset = Subset(data.getTrainData(), data.getDataIndices()[idChoosed[k]])
@@ -117,3 +128,5 @@ if __name__ == "__main__":
         print(
             '----------------------------------[Round: %d] accuracy: %f  loss: %f----------------------------------'
              % (curr_round, global_acc, global_loss))
+        accuracyGlobal[curr_round] = global_acc
+    np.savetxt('./Zero.csv', accuracyGlobal.reshape(-1, 1), delimiter=',', fmt='%.6f')

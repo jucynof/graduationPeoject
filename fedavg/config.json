@@ -10,6 +10,7 @@
   "localEpoch": 10,
   "alpha": 0.5,
   "w": 0.5,
+  "attenuationRate": 0.95,
   "normalizeMeanTrain": 0.28604060411453247,
   "normalizeStdTrain": 0.35302427411079407,
   "normalizeMeanTest": 0.2868492603302002,
