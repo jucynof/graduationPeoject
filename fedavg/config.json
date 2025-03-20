@@ -1,5 +1,5 @@
 {
-  "isIID": "False",
+  "isIID": 0,
   "num_clients": 100,
   "client_rate": 0.1,
   "batchSize": 64,
@@ -11,6 +11,8 @@
   "alpha": 0.5,
   "w": 1.0,
   "attenuationRate": 1,
+  "glocalParameterPath": "./glocalParameter",
+  "lastRound": 0,
   "normalizeMeanTrain": 0.28604060411453247,
   "normalizeStdTrain": 0.35302427411079407,
   "normalizeMeanTest": 0.2868492603302002,

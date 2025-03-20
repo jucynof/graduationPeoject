@@ -1,3 +1,5 @@
+import csv
+import os
 import numpy as np
 import torch
 from torch import nn, optim
@@ -9,7 +11,7 @@ from getData import getData, getNoIIDData
 from utils import Evaluate1
 with open("config.json") as f:
     config = json.load(f)
-
+f.close()
 # ----------------------------------在测试集上评估模型的性能, 计算准确率和平均损失----------------------------------
 class test_accuracy:
 
@@ -65,7 +67,7 @@ class test_accuracy:
 
 if __name__ == "__main__":
     #获取数据
-    if config["isIID"]:
+    if config["isIID"]==1:
         print("IID")
         data = getData(config)
     else:
@@ -94,7 +96,7 @@ if __name__ == "__main__":
     loss_func = nn.CrossEntropyLoss()
     loss_func = loss_func.to(dev)
     # 定义优化器
-    if config["isIID"]:
+    if config["isIID"]==1:
         lr=config["lrIID"]
     else:
         lr=config["lrNoIID"]
@@ -103,18 +105,28 @@ if __name__ == "__main__":
     # 定义变量global_parameters
     global_parameters = net.state_dict()
     #储存每次通信accuracy
-    accuracyGlobal=np.array([0 for i in range(config["rounds"]+1)],dtype=np.float32)
-    #通信前的accuracy
-    accuracy = test_accuracy()
-    global_loss, global_acc = accuracy.test_accuracy(net, global_parameters, data.getTestData(), dev, loss_func)
-    print(
-        '----------------------------------[Round: %d] accuracy: %f  loss: %f----------------------------------'
-        % (0, global_acc, global_loss))
-    accuracyGlobal[0]=global_acc
+    # accuracyGlobal=np.array([0 for i in range(config["rounds"]+1)],dtype=np.float32)
+    accuracyGlobal=[]
+    lastRound=0
+    if os.path.exists(config["glocalParameterPath"]):
+        global_parameters = torch.load(config["glocalParameterPath"])
+        with open('./test_accuracy.csv', 'r') as file:
+            csv_reader = csv.reader(file)
+            for row in csv_reader:
+                accuracyGlobal.append(row[0])  # 目标列是第一列
+        lastRound=config["lastRound"]
+    else:
+        # 通信前的accuracy
+        accuracy = test_accuracy()
+        global_loss, global_acc = accuracy.test_accuracy(net, global_parameters, data.getTestData(), dev, loss_func)
+        print(
+            '----------------------------------[Round: %d] accuracy: %f  loss: %f----------------------------------'
+            % (0, global_acc, global_loss))
+        accuracyGlobal.append(global_acc)
     # clients与server之间通信
     w_attenaution=np.array([1 for i in range(config["num_clients"])],dtype=np.float32)#定义每个客户端的打分的衰减率
     x=0
-    for curr_round in range(1, rounds + 1):
+    for curr_round in range(lastRound, lastRound+rounds + 1):
         local_loss = []
         client_params = {}
         acc = np.zeros(config["num_clients"])
@@ -168,7 +180,12 @@ if __name__ == "__main__":
         print(
             '----------------------------------[Round: %d] accuracy: %f  loss: %f----------------------------------'
              % (curr_round, global_acc, global_loss))
-        accuracyGlobal[curr_round] = global_acc
+        accuracyGlobal.append(global_acc)
         x=x+1
         if x % 10 == 0:
-            np.savetxt('./Zero.csv', accuracyGlobal.reshape(-1, 1), delimiter=',', fmt='%.6f')
+            torch.save(net.state_dict(), config["glocalParameterPath"])
+            np.savetxt('./test_accuracy.csv', accuracyGlobal.reshape(-1, 1), delimiter=',', fmt='%.6f')
+            config["lastRound"]=curr_round
+            with open('config.json', 'w', encoding='utf-8') as f:
+                json.dump(config, f, ensure_ascii=False, indent=4)
+            f.close()

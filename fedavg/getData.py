@@ -9,6 +9,8 @@ class getNoIIDData:
     test_dataset = None
     split_indices = None
     def __init__(self,config):
+        torch.manual_seed(config['random_seed'])  # 设置PyTorch种子
+        np.random.seed(config['random_seed'])
         #加载数据集
         # 在加载数据集之前，先计算数据集的均值和标准差
         # 检查config中是否存在标准化参数
@@ -101,6 +103,8 @@ class getData:
     test_dataset = None
     split_indices = None
     def __init__(self, config):
+        torch.manual_seed(config["random_seed"])  # 设置PyTorch种子
+        np.random.seed(config['random_seed'])
         # 加载MNIST数据集
         # 在加载数据集之前，先计算数据集的均值和标准差
         # 检查config中是否存在标准化参数
