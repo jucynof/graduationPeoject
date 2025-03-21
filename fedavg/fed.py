@@ -23,7 +23,6 @@ class client:
         # 并将global_parameters传入网络模型
         Net.load_state_dict(global_parameters, strict=True)
         # 加载本地数据, client自己的数据集
-
         self.train_DataLoader = DataLoader(trainDataSet, batch_size=int(localBatchSize), shuffle=False)
         self.dev = dev
 

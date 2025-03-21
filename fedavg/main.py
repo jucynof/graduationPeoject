@@ -18,7 +18,7 @@ class test_accuracy:
     def test_accuracy(self, net, parameters, testDataset, dev, lossFun):
         # 存储损失
 
-        testDataLoader=DataLoader(testDataset, batch_size=config["batchSize"], shuffle=False)
+        testDataLoader=DataLoader(testDataset, batch_size=config["batchSize"], shuffle=True)
         total_correct = 0
         total_samples = 0
         total_loss = 0.0
@@ -67,6 +67,8 @@ class test_accuracy:
         # return avg_loss, accuracy
 
 if __name__ == "__main__":
+    torch.manual_seed(config['random_seed'])  # 设置PyTorch种子
+    np.random.seed(config['random_seed'])
     #获取数据
     if config["isIID"]==1:
         print("IID")
@@ -86,7 +88,7 @@ if __name__ == "__main__":
     numClientsChoosed=int(numClients*clientRate)
     # ----------------------------------初始化模型----------------------------------
     #模型实例化
-    net = SimpleCNN()
+    net = SimpleCNN(config)
     net = net.to(dev)
     # 定义损失函数
     loss_func = nn.CrossEntropyLoss()
@@ -164,21 +166,21 @@ if __name__ == "__main__":
         #idChoosed = np.random.choice(numbers, numClientsChoosed, replace=True)#随机抽取
         idChoosed=indices#根据得分抽取
         # 选择得分高的客户端进行训练
-        j=0
-        for i in idChoosed:
-            client_params[j]=local_parameters[i]
-            j=j+1
-        # for k in range(numClientsChoosed):
-        #
-        #     cur_client = client(config)
-        #     subTrainDateset = Subset(data.getTrainData(), data.getDataIndices()[idChoosed[k]])
-        #     # 每个client训练得到的权重
-        #     local_parameters = cur_client.localUpdate(localEpoch=config["localEpoch"], localBatchSize=config["batchSize"], Net=net,
-        #                                              lossFun=loss_func,
-        #                                              opti=opti,
-        #                                              global_parameters=global_parameters,
-        #                                              trainDataSet=subTrainDateset, dev=dev)
-        #     client_params[k] = local_parameters
+        # j=0
+        # for i in idChoosed:
+        #     client_params[j]=local_parameters[i]
+        #     j=j+1
+        for k in range(numClientsChoosed):
+
+            cur_client = client(config)
+            subTrainDateset = Subset(data.getTrainData(), data.getDataIndices()[idChoosed[k]])
+            # 每个client训练得到的权重
+            local_parameters = cur_client.localUpdate(localEpoch=config["localEpoch"], localBatchSize=config["batchSize"], Net=net,
+                                                     lossFun=loss_func,
+                                                     opti=opti,
+                                                     global_parameters=global_parameters,
+                                                     trainDataSet=subTrainDateset, dev=dev)
+            client_params[k] = local_parameters
             # accuracy = test_accuracy()
             # local_loss, local_acc = accuracy.test_accuracy(net, local_parameters, data.getTestData(), dev, loss_func)
             #if curr_round % 10 == 0:

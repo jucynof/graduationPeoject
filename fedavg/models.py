@@ -1,23 +1,27 @@
+import numpy as np
+import torch
 import torch.nn.functional as F
 from torch import nn
 # ----------------------------------定义CNN神经网络模型----------------------------------
 
 class SimpleCNN(nn.Module):#适用于fashionminst
-    def __init__(self, in_channels=1, num_classes=10):
+    def __init__(self,config, in_channels=1, num_classes=10):
         super().__init__()
+        torch.manual_seed(config['random_seed'])  # 设置PyTorch种子
+        np.random.seed(config['random_seed'])
         self.conv_layers = nn.Sequential(
             nn.Conv2d(in_channels, 32, 3, padding=1),  # 输出32x28x28
             nn.ReLU(),
-            nn.MaxPool2d(2),  # 输出32x14x14
+            nn.MaxPool2d(kernel_size=2, stride=2, padding=0),  # 输出32x14x14
             nn.Conv2d(32, 64, 3, padding=1),  # 输出64x14x14
             nn.ReLU(),
-            nn.MaxPool2d(2)   # 输出64x7x7
+            nn.MaxPool2d(kernel_size=2, stride=2, padding=0)   # 输出64x7x7
         )
         self.fc_layers = nn.Sequential(
             nn.Flatten(),
-            nn.Linear(64 * 7 * 7, 128),
+            nn.Linear(64 * 7 * 7, 512),
             nn.ReLU(),
-            nn.Linear(128, num_classes),
+            nn.Linear(512, num_classes),
             nn.Softmax(dim=1)  # 新增Softmax层
         )
 
