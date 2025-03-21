@@ -82,14 +82,11 @@ if __name__ == "__main__":
     numClients=config["num_clients"]
     numbers = np.arange(numClients)  # 创建一个包含numClients个数字的数组
 
-    # scores=[0 for i in range(numClients)]#创建数组保存每个客户端的得分
-    # indices = np.argsort(-scores)[:config["num_Clients"]*config["client_rate"]]  # 降序排序后取前n个索引
-
 
     clientRate=config["client_rate"]
     numClientsChoosed=int(numClients*clientRate)
     # ----------------------------------初始化模型----------------------------------
-    # 模型实例化
+    #模型实例化
     net = SimpleCNN()
     net = net.to(dev)
     # 定义损失函数
@@ -101,17 +98,16 @@ if __name__ == "__main__":
     else:
         lr=config["lrNoIID"]
     opti = optim.Adam(net.parameters(), lr=lr)
-
     # 定义变量global_parameters
     global_parameters = net.state_dict()
+    # ----------------------------------通信----------------------------------
     #储存每次通信accuracy
-    # accuracyGlobal=np.array([0 for i in range(config["rounds"]+1)],dtype=np.float32)
     accuracyGlobal=[]
-    lastRound=0
-    if os.path.exists(config["glocalParameterPath"]):
+    lastRound=0#上次关闭程序时通信轮次
+    if os.path.exists(config["glocalParameterPath"]):#存在说明可以直接继续训练
         print("衔接上次继续训练")
         global_parameters = torch.load(config["glocalParameterPath"])
-        with open('./test_accuracy.csv', 'r') as file:
+        with open('./test_accuracy.csv', 'r') as file:#读取acc表方便继续更新
             csv_reader = csv.reader(file)
             for row in csv_reader:
                 try:
@@ -124,6 +120,7 @@ if __name__ == "__main__":
     else:
         # 通信前的accuracy
         print("重新训练")
+        #未进行训练是的acc和loss
         accuracy = test_accuracy()
         global_loss, global_acc = accuracy.test_accuracy(net, global_parameters, data.getTestData(), dev, loss_func)
         print(
@@ -132,12 +129,13 @@ if __name__ == "__main__":
         accuracyGlobal.append(global_acc)
     # clients与server之间通信
     w_attenaution=np.array([1 for i in range(config["num_clients"])],dtype=np.float32)#定义每个客户端的打分的衰减率
-    x=0
+    x=0#定期保存训练的参数和acc
     for curr_round in range(lastRound+1, lastRound+rounds + 1):
         local_loss = []
         client_params = {}
-        acc = np.zeros(config["num_clients"])
-        loss = np.zeros(config["num_clients"])
+        acc = np.zeros(config["num_clients"])#用于打分保存的acc
+        loss = np.zeros(config["num_clients"])#用于打分保存的loss
+        #遍历所有模型，找到当前参数训练后得分最高的客户端
         for k in range(config["num_clients"]):
             cur_client = client(config)
             subTrainDateset = Subset(data.getTrainData(), data.getDataIndices()[k])
@@ -164,6 +162,7 @@ if __name__ == "__main__":
                 w_attenaution[i]=1
         #idChoosed = np.random.choice(numbers, numClientsChoosed, replace=True)#随机抽取
         idChoosed=indices#根据得分抽取
+        #选择得分高的客户端进行训练
         for k in range(numClientsChoosed):
             cur_client = client(config)
             subTrainDateset = Subset(data.getTrainData(), data.getDataIndices()[idChoosed[k]])
@@ -174,8 +173,8 @@ if __name__ == "__main__":
                                                      global_parameters=global_parameters,
                                                      trainDataSet=subTrainDateset, dev=dev)
             client_params[k] = local_parameters
-            accuracy = test_accuracy()
-            local_loss, local_acc = accuracy.test_accuracy(net, local_parameters, data.getTestData(), dev, loss_func)
+            # accuracy = test_accuracy()
+            # local_loss, local_acc = accuracy.test_accuracy(net, local_parameters, data.getTestData(), dev, loss_func)
             #if curr_round % 10 == 0:
            # print('[Round: %d Client: %d] accuracy: %f  loss: %f ' % (curr_round, idChoosed[k], local_acc, local_loss))
         # 取平均值，得到本次通信中server得到的更新后的模型参数
@@ -188,6 +187,7 @@ if __name__ == "__main__":
             '----------------------------------[Round: %d] accuracy: %f  loss: %f----------------------------------'
              % (curr_round, global_acc, global_loss))
         accuracyGlobal.append(global_acc)
+        #定期将参数和acc保存
         x=x+1
         if x % 10 == 0:
             torch.save(net.state_dict(), config["glocalParameterPath"])
