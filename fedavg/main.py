@@ -24,19 +24,20 @@ class test_accuracy:
         total_loss = 0.0
         net.load_state_dict(parameters, strict=True)
         net.eval()  # 确保模型处于评估模式
-        for data, label in testDataLoader:
-            data, label = data.to(dev), label.to(dev)
-            output = net(data)
-            # 计算损失
-            loss = lossFun(output, label)
-            batch_loss = loss.item()
-            batch_size = label.size(0)
-            total_loss += batch_loss * batch_size  # 累加加权损失
-            # 计算正确数
-            preds = torch.argmax(output, dim=1)
-            correct = (preds == label).sum().item()
-            total_correct += correct
-            total_samples += batch_size
+        with torch.no_grad():
+            for data, label in testDataLoader:
+                data, label = data.to(dev), label.to(dev)
+                output = net(data)
+                # 计算损失
+                loss = lossFun(output, label)
+                batch_loss = loss.item()
+                batch_size = label.size(0)
+                total_loss += batch_loss * batch_size  # 累加加权损失
+                # 计算正确数
+                preds = torch.argmax(output, dim=1)
+                correct = (preds == label).sum().item()
+                total_correct += correct
+                total_samples += batch_size
         correctRate = total_correct / total_samples
         lossAvg = total_loss / total_samples
         return lossAvg,correctRate
@@ -81,8 +82,6 @@ if __name__ == "__main__":
     rounds=config["rounds"]
     numClients=config["num_clients"]
     numbers = np.arange(numClients)  # 创建一个包含numClients个数字的数组
-
-
     clientRate=config["client_rate"]
     numClientsChoosed=int(numClients*clientRate)
     # ----------------------------------初始化模型----------------------------------
@@ -131,23 +130,25 @@ if __name__ == "__main__":
     w_attenaution=np.array([1 for i in range(config["num_clients"])],dtype=np.float32)#定义每个客户端的打分的衰减率
     x=0#定期保存训练的参数和acc
     for curr_round in range(lastRound+1, lastRound+rounds + 1):
+
         local_loss = []
         client_params = {}
         acc = np.zeros(config["num_clients"])#用于打分保存的acc
         loss = np.zeros(config["num_clients"])#用于打分保存的loss
         #遍历所有模型，找到当前参数训练后得分最高的客户端
+        local_parameters={}
         for k in range(config["num_clients"]):
             cur_client = client(config)
             subTrainDateset = Subset(data.getTrainData(), data.getDataIndices()[k])
             # 每个client训练得到的权重
-            local_parameters = cur_client.localUpdate(localEpoch=config["localEpoch"],
+            local_parameters[k] = cur_client.localUpdate(localEpoch=config["localEpoch"],
                                                       localBatchSize=config["batchSize"], Net=net,
                                                       lossFun=loss_func,
                                                       opti=opti,
                                                       global_parameters=global_parameters,
                                                       trainDataSet=subTrainDateset, dev=dev)
             accuracy = test_accuracy()
-            loss[k], acc[k] = accuracy.test_accuracy(net, local_parameters, data.getTestData(), dev, loss_func)
+            loss[k], acc[k] = accuracy.test_accuracy(net, local_parameters[k], data.getTestData(), dev, loss_func)
         scores = Evaluate1(acc, loss, config["w"],w_attenaution)
         indices = np.argsort(-scores)[:int(config["num_clients"] * config["client_rate"])]  # 降序排序后取前n个索引
         print("第%d轮次通信中得分最高的客户端为:"%(curr_round),indices)
@@ -162,17 +163,22 @@ if __name__ == "__main__":
                 w_attenaution[i]=1
         #idChoosed = np.random.choice(numbers, numClientsChoosed, replace=True)#随机抽取
         idChoosed=indices#根据得分抽取
-        #选择得分高的客户端进行训练
-        for k in range(numClientsChoosed):
-            cur_client = client(config)
-            subTrainDateset = Subset(data.getTrainData(), data.getDataIndices()[idChoosed[k]])
-            # 每个client训练得到的权重
-            local_parameters = cur_client.localUpdate(localEpoch=config["localEpoch"], localBatchSize=config["batchSize"], Net=net,
-                                                     lossFun=loss_func,
-                                                     opti=opti,
-                                                     global_parameters=global_parameters,
-                                                     trainDataSet=subTrainDateset, dev=dev)
-            client_params[k] = local_parameters
+        # 选择得分高的客户端进行训练
+        j=0
+        for i in idChoosed:
+            client_params[j]=local_parameters[i]
+            j=j+1
+        # for k in range(numClientsChoosed):
+        #
+        #     cur_client = client(config)
+        #     subTrainDateset = Subset(data.getTrainData(), data.getDataIndices()[idChoosed[k]])
+        #     # 每个client训练得到的权重
+        #     local_parameters = cur_client.localUpdate(localEpoch=config["localEpoch"], localBatchSize=config["batchSize"], Net=net,
+        #                                              lossFun=loss_func,
+        #                                              opti=opti,
+        #                                              global_parameters=global_parameters,
+        #                                              trainDataSet=subTrainDateset, dev=dev)
+        #     client_params[k] = local_parameters
             # accuracy = test_accuracy()
             # local_loss, local_acc = accuracy.test_accuracy(net, local_parameters, data.getTestData(), dev, loss_func)
             #if curr_round % 10 == 0:

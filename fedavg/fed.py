@@ -32,12 +32,12 @@ class client:
             for data, label in self.train_DataLoader:
                 # 加载到GPU上
                 data, label = data.to(dev), label.to(dev)
+                # 将梯度归零，初始化梯度
+                opti.zero_grad()
                 # 模型上传入数据
                 output = Net(data)
                 # 计算损失函数
                 loss = lossFun(output, label)
-                # 将梯度归零，初始化梯度
-                opti.zero_grad()
                 # 反向传播
                 loss.backward()
                 # 计算梯度，并更新梯度
