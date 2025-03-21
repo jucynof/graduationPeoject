@@ -5,7 +5,7 @@ import torch
 from torch import nn, optim
 import json
 from torch.utils.data import DataLoader, Subset,TensorDataset
-from models import Mnist_CNN
+from models import SimpleCNN,EnhancedCNN
 from fed import client,server
 from getData import getData, getNoIIDData
 from utils import Evaluate1
@@ -90,7 +90,7 @@ if __name__ == "__main__":
     numClientsChoosed=int(numClients*clientRate)
     # ----------------------------------初始化模型----------------------------------
     # 模型实例化
-    net = Mnist_CNN()
+    net = SimpleCNN()
     net = net.to(dev)
     # 定义损失函数
     loss_func = nn.CrossEntropyLoss()
