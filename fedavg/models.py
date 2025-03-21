@@ -10,10 +10,10 @@ class SimpleCNN(nn.Module):#适用于fashionminst
         torch.manual_seed(config['random_seed'])  # 设置PyTorch种子
         np.random.seed(config['random_seed'])
         self.conv_layers = nn.Sequential(
-            nn.Conv2d(in_channels, 32, 3, padding=1),  # 输出32x28x28
+            nn.Conv2d(in_channels, 32, 5, padding=2),  # 输出32x28x28
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2, padding=0),  # 输出32x14x14
-            nn.Conv2d(32, 64, 3, padding=1),  # 输出64x14x14
+            nn.Conv2d(32, 64, 5, padding=2),  # 输出64x14x14
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2, padding=0)   # 输出64x7x7
         )
@@ -22,12 +22,16 @@ class SimpleCNN(nn.Module):#适用于fashionminst
             nn.Linear(64 * 7 * 7, 512),
             nn.ReLU(),
             nn.Linear(512, num_classes),
+        )
+        self.softmaxed_ = nn.Sequential(
             nn.Softmax(dim=1)  # 新增Softmax层
         )
 
     def forward(self, x):
         x = self.conv_layers(x)
-        return self.fc_layers(x)
+        x = self.fc_layers(x)
+        x_softmaxed = self.softmaxed_(x)
+        return x, x_softmaxed
 class EnhancedCNN(nn.Module):#增强cnn适用于cifar10
     def __init__(self, in_channels=3, num_classes=10):
         super().__init__()
@@ -50,9 +54,13 @@ class EnhancedCNN(nn.Module):#增强cnn适用于cifar10
             nn.Linear(256, 512),
             nn.Dropout(0.5),
             nn.Linear(512, num_classes),
+        )
+        self.softmaxed_ = nn.Sequential(
             nn.Softmax(dim=1)  # 新增Softmax层
         )
 
     def forward(self, x):
         x = self.features(x)
-        return self.classifier(x)
+        x=  self.classifier(x)
+        x_softmax = self.softmaxed_(x)
+        return x,x_softmax

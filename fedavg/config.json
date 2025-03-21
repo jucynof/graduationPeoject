@@ -12,7 +12,7 @@
     "w": 1.0,
     "attenuationRate": 1,
     "glocalParameterPath": "./glocalParameter",
-    "lastRound": 10,
+    "lastRound": 0,
     "normalizeMeanTrain": 0.28604060411453247,
     "normalizeStdTrain": 0.35302427411079407,
     "normalizeMeanTest": 0.2868492603302002,

@@ -27,14 +27,14 @@ class test_accuracy:
         with torch.no_grad():
             for data, label in testDataLoader:
                 data, label = data.to(dev), label.to(dev)
-                output = net(data)
+                output_train,output_test = net(data)
                 # 计算损失
-                loss = lossFun(output, label)
+                loss = lossFun(output_test, label)
                 batch_loss = loss.item()
                 batch_size = label.size(0)
                 total_loss += batch_loss * batch_size  # 累加加权损失
                 # 计算正确数
-                preds = torch.argmax(output, dim=1)
+                preds = torch.argmax(output_test, dim=1)
                 correct = (preds == label).sum().item()
                 total_correct += correct
                 total_samples += batch_size
@@ -104,6 +104,7 @@ if __name__ == "__main__":
     # ----------------------------------通信----------------------------------
     #储存每次通信accuracy
     accuracyGlobal=[]
+    lossGlobal=[]
     lastRound=0#上次关闭程序时通信轮次
     if os.path.exists(config["glocalParameterPath"]):#存在说明可以直接继续训练
         print("衔接上次继续训练")
@@ -118,6 +119,15 @@ if __name__ == "__main__":
                     print(f"第{len(accuracyGlobal) + 1}行转换失败：{e}")
                     accuracyGlobal.append(None)  # 保留空值标记异常数据
         lastRound=config["lastRound"]
+        with open("./test_loss.csv",'r') as file:
+            csv_reader = csv.reader(file)
+            for row in csv_reader:
+                try:
+                    # 转换为浮点数并保留精度
+                    lossGlobal.append(float(row[0].strip()))
+                except (ValueError, IndexError) as e:
+                    print(f"第{len(lossGlobal) + 1}行转换失败：{e}")
+                    lossGlobal.append(None)  # 保留空值标记异常数据
     else:
         # 通信前的accuracy
         print("重新训练")
@@ -128,6 +138,7 @@ if __name__ == "__main__":
             '----------------------------------[Round: %d] accuracy: %f  loss: %f----------------------------------'
             % (0, global_acc, global_loss))
         accuracyGlobal.append(global_acc)
+        lossGlobal.append(global_loss)
     # clients与server之间通信
     w_attenaution=np.array([1 for i in range(config["num_clients"])],dtype=np.float32)#定义每个客户端的打分的衰减率
     x=0#定期保存训练的参数和acc
@@ -195,12 +206,15 @@ if __name__ == "__main__":
             '----------------------------------[Round: %d] accuracy: %f  loss: %f----------------------------------'
              % (curr_round, global_acc, global_loss))
         accuracyGlobal.append(global_acc)
+        lossGlobal.append(global_loss)
         #定期将参数和acc保存
         x=x+1
         if x % 10 == 0:
             torch.save(net.state_dict(), config["glocalParameterPath"])
             listaccuracy = np.array(accuracyGlobal)
-            np.savetxt('./test_accuracy.csv', listaccuracy.reshape(-1, 1), delimiter=',', fmt='%.6f')
+            listloss = np.array(lossGlobal)
+            np.savetxt('./test_accuracy.csv', listaccuracy.reshape(-1, 1), delimiter=',', fmt='%.4f')
+            np.savetxt('./test_loss.csv', listloss.reshape(-1, 1), delimiter=',', fmt='%.6f')
             config["lastRound"] = curr_round
             with open('config.json', 'w', encoding='utf-8') as f:
                 json.dump(config, f, ensure_ascii=False, indent=4)

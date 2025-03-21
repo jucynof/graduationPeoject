@@ -34,17 +34,15 @@ class client:
                 # 将梯度归零，初始化梯度
                 opti.zero_grad()
                 # 模型上传入数据
-                output = Net(data)
+                output_train,output_test = Net(data)
                 # 计算损失函数
-                loss = lossFun(output, label)
+                loss = lossFun(output_train, label)
                 # 反向传播
                 loss.backward()
                 # 计算梯度，并更新梯度
                 opti.step()
-
         # 返回当前Client基于自己的数据训练得到的新的模型参数
         return Net.state_dict()
-
     def local_val(self):
         pass
 # ----------------------------------服务器----------------------------------
