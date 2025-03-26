@@ -72,10 +72,11 @@ def getClientsForTrain(scores,times,costs,costThreshold,config):
         costThresholdCur=costThresholdCur-costCur
         #把耗时高于该客户端的消费全部暂时拔高以保证不会被选择
         for j in range(0,i+1):
-            costsCur[indices[i]]=costThresholdCur+1
+            costsCur[indices[j]]=costThresholdCur+1
         #价值和时间的统筹估算
-        timeSum=times[indices[i]]
+
         valuesum,idChoosedCur=knapsack_01(costsCur,scores,costThresholdCur)
+        timeSum = times[indices[i]]*len(idChoosedCur)
         scoresFinalCur=valuesum+scoreCur-timeSum
         scoresFinal.append(scoresFinalCur)
         idChoosed.append(idChoosedCur)
