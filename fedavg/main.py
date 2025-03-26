@@ -142,11 +142,10 @@ if __name__ == "__main__":
     # clients与server之间通信
     w_attenaution=np.array([1 for i in range(config["num_clients"])],dtype=np.float32)#定义每个客户端的打分的衰减率
     x=0#定期保存训练的参数和acc
+    times = getTime(config)
+    costs, costthreshold = getcost(config)
     for curr_round in range(lastRound+1, lastRound+rounds + 1):
         scores=None
-        times=None
-        costs=None
-        costthreshold=None
         local_loss = []
         client_params = {}
         acc = np.zeros(config["num_clients"])#用于打分保存的acc
@@ -165,11 +164,9 @@ if __name__ == "__main__":
                                                       trainDataSet=subTrainDateset, dev=dev)
             accuracy = test_accuracy()
             loss[k], acc[k] = accuracy.test_accuracy(net, local_parameters[k], data.getTestData(), dev, loss_func)
-        scores = Evaluate1(acc, loss, config["w"],w_attenaution)
-        times=getTime(config)
-        costs,costthreshold=getcost(config)
-        indices=getClientsForTrain(scores,times,costs,costthreshold,config)
-        print("第%d轮次通信中得分最高的客户端为:"%(curr_round),indices)
+        scores = Evaluate1(acc[:], loss[:], config["w"],w_attenaution[:])
+        indices=getClientsForTrain(scores[:],times[:],costs[:],costthreshold,config)
+        print("第%d轮次通信中选中的客户端为:"%(curr_round),indices)
         # print("他们的得分如下：")
         # for ind in indices:
         #     print(scores[ind])

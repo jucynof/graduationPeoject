@@ -4,8 +4,12 @@ import torch
 import torch.nn as nn
 with open("config.json") as f:
     config = json.load(f)
-for i in range(0,10):
-    print(i)
+a=[0,1,2,3]
+b=a
+b[0]=4
+print(a)
+# for i in range(0,10):
+#     print(i)
 # # 模型输出（假设batch_size=2）
 # logits = torch.tensor([1.0, 4])  # shape: [2, 10]
 # print(torch.softmax(logits, dim=0))

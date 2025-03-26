@@ -12,7 +12,7 @@ def Evaluate1(acc,loss,w,w_attenaution):
     for i in range(len(acc)):
         scores[i] = scores[i] * w_attenaution[i]
     # scores=softmax(torch.Tensor(scores),dim=0)
-    scores=scores.cpu().numpy()
+    # scores=scores.cpu().numpy()
     scoreMax=np.max(scores)
     for i in range(len(scores)):
         scores[i]=scores[i]/scoreMax
@@ -57,6 +57,7 @@ def getcost(config):
     return costs,costThreshold
 
 def getClientsForTrain(scores,times,costs,costThreshold,config):
+    times=np.array(times)
     indices = np.argsort(-times)[:config["num_clients"]]  # 降序排序后取前config["num_clients"]个索引
     scoresFinal=[]
     idChoosed=[]
@@ -78,7 +79,9 @@ def getClientsForTrain(scores,times,costs,costThreshold,config):
         scoresFinalCur=valuesum+scoreCur-timeSum
         scoresFinal.append(scoresFinalCur)
         idChoosed.append(idChoosedCur)
+    scoresFinal=np.array(scoresFinal)
     i = (np.argsort(-scoresFinal)[:1])[0]  # 输出得分最大的是哪一轮
+    idChoosed.append(indices[i])
     return idChoosed[i]
 
 
