@@ -44,10 +44,20 @@ def knapsack_01(weights, values, capacity):
 #获取每个客户端的耗时
 def getTime(config):
     np.random.seed(config['random_seed']+10)
-    times = [np.random.uniform(10, 100) for _ in range(config['num_clients'])]
+    timeStart=np.random.uniform(1,10)
+    times = [np.random.uniform(timeStart ,timeStart*config['timesMax']) for _ in range(config['num_clients'])]
     timeMax=np.max(times)
     for i in range(len(times)):
         times[i] = times[i]/timeMax
+    return times
+def getFinalTime(config,times,curr_round):
+    np.random.seed(config['random_seed']+10+curr_round)
+    timeStart=np.random.uniform(1,10)
+    times_ = [np.random.uniform(timeStart, timeStart * config['timesMax']) for _ in range(config['num_clients'])]
+    timeMax = np.max(times_)
+    for i in range(len(times)):
+        times_[i] = times_[i] / timeMax
+        times[i]=(times[i]+times_[i])/2
     return times
 #获取每个客户端的消费和总的消费预算
 def getcost(config):
@@ -74,16 +84,17 @@ def getClientsForTrain(scores,times,costs,costThreshold,config):
         for j in range(0,i+1):
             costsCur[indices[j]]=costThresholdCur+1
         #价值和时间的统筹估算
-
         valuesum,idChoosedCur=knapsack_01(costsCur,scores,costThresholdCur)
         timeSum = times[indices[i]]*len(idChoosedCur)
-        scoresFinalCur=valuesum+scoreCur-timeSum
+        scoresFinalCur=(config['a']*(valuesum+scoreCur))-(config['b']*timeSum)
         scoresFinal.append(scoresFinalCur)
+        idChoosedCur.append(i)
         idChoosed.append(idChoosedCur)
     scoresFinal=np.array(scoresFinal)
-    i = (np.argsort(-scoresFinal)[:1])[0]  # 输出得分最大的是哪一轮
-    idChoosed.append(indices[i])
-    return idChoosed[i]
+    i = np.argsort(-scoresFinal)[:config["num_clients"]] # 输出得分最大的是哪一轮
+    for j in range(10):
+        print(i[j*10], scoresFinal[i[j*10]])
+    return idChoosed[i[0]]
 
 
 

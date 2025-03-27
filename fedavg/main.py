@@ -8,7 +8,8 @@ from torch.utils.data import DataLoader, Subset,TensorDataset
 from models import SimpleCNN,EnhancedCNN
 from fed import client,server
 from getData import getData, getNoIIDData
-from utils import Evaluate1,getTime,getClientsForTrain,getcost
+from utils import Evaluate1, getTime, getClientsForTrain, getcost, getFinalTime
+
 with open("config.json") as f:
     config = json.load(f)
 f.close()
@@ -142,9 +143,10 @@ if __name__ == "__main__":
     # clients与server之间通信
     w_attenaution=np.array([1 for i in range(config["num_clients"])],dtype=np.float32)#定义每个客户端的打分的衰减率
     x=0#定期保存训练的参数和acc
-    times = getTime(config)
+    timesFixed = getTime(config)
     costs, costthreshold = getcost(config)
     for curr_round in range(lastRound+1, lastRound+rounds + 1):
+        timesFinal=getFinalTime(config,timesFixed[:],curr_round)
         scores=None
         local_loss = []
         client_params = {}
@@ -165,7 +167,7 @@ if __name__ == "__main__":
             accuracy = test_accuracy()
             loss[k], acc[k] = accuracy.test_accuracy(net, local_parameters[k], data.getTestData(), dev, loss_func)
         scores = Evaluate1(acc[:], loss[:], config["w"],w_attenaution[:])
-        indices=getClientsForTrain(scores[:],times[:],costs[:],costthreshold,config)
+        indices=getClientsForTrain(scores[:],timesFinal[:],costs[:],costthreshold,config)
         print("第%d轮次通信中选中的客户端为:"%(curr_round),indices)
         # print("他们的得分如下：")
         # for ind in indices:

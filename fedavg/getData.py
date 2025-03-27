@@ -62,10 +62,8 @@ class getNoIIDData:
         # 获取数据标签，并统计类别数量
         targets = np.array(self.train_dataset.targets)
         num_classes = np.unique(targets).size
-
         # 初始化每个客户端的数据索引字典
         client_indices = {i: [] for i in range(config["num_clients"])}
-
         # 针对每个类别进行数据分配
         for cls in range(num_classes):
             # 获取该类别所有样本的索引，并打乱顺序
