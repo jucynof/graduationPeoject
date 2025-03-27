@@ -62,8 +62,9 @@ def getFinalTime(config,times,curr_round):
 #获取每个客户端的消费和总的消费预算
 def getcost(config):
     np.random.seed(config['random_seed']+20)
-    costs=[np.random.randint(10, 100) for _ in range(config['num_clients'])]
-    costThreshold=int((np.average(costs)))*int((config['num_clients']*config['client_rate']))
+    costStart=np.random.randint(10,20)
+    costs=[np.random.randint(costStart, int(costStart*config['costsMax']))for _ in range(config['num_clients'])]
+    costThreshold=int((np.average(costs)))*int((config['num_clients']*config['costThreshold']))
     return costs,costThreshold
 
 def getClientsForTrain(scores,times,costs,costThreshold,config):
@@ -72,28 +73,28 @@ def getClientsForTrain(scores,times,costs,costThreshold,config):
     scoresFinal=[]
     idChoosed=[]
     for i in range(len(indices)):
-        costsCur=costs
         costThresholdCur=costThreshold
-    #保证该轮一定选中这个客户端，且比这个客户端耗时更多的客户端一定不选
+
         #保存该客户端的得分
         scoreCur=scores[indices[i]]
         #把该客户端的消费减去
-        costCur=costsCur[indices[i]]
+        costCur=costs[indices[i]]
         costThresholdCur=costThresholdCur-costCur
-        #把耗时高于该客户端的消费全部暂时拔高以保证不会被选择
-        for j in range(0,i+1):
-            costsCur[indices[j]]=costThresholdCur+1
+        # 保证该轮一定选中这个客户端，且比这个客户端耗时更多的客户端一定不选
+        costs[indices[i]]=costThresholdCur+1
         #价值和时间的统筹估算
-        valuesum,idChoosedCur=knapsack_01(costsCur,scores,costThresholdCur)
+        valuesum,idChoosedCur=knapsack_01(costs[:],scores[:],costThresholdCur)
+        idChoosedCur.append(i)
+        # for k in range(len(idChoosedCur)):
+        #     print(costs[idChoosedCur[k]]/np.average(costs))
         timeSum = times[indices[i]]*len(idChoosedCur)
         scoresFinalCur=(config['a']*(valuesum+scoreCur))-(config['b']*timeSum)
         scoresFinal.append(scoresFinalCur)
-        idChoosedCur.append(i)
         idChoosed.append(idChoosedCur)
     scoresFinal=np.array(scoresFinal)
     i = np.argsort(-scoresFinal)[:config["num_clients"]] # 输出得分最大的是哪一轮
-    for j in range(10):
-        print(i[j*10], scoresFinal[i[j*10]])
+    # for j in range(10):
+    #     print(i[j*10], scoresFinal[i[j*10]])
     return idChoosed[i[0]]
 
 

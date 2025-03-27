@@ -19,9 +19,10 @@ class SimpleCNN(nn.Module):#适用于fashionminst
         )
         self.fc_layers = nn.Sequential(
             nn.Flatten(),
-            nn.Linear(64 * 7 * 7, 512),
+            nn.Linear(64 * 7 * 7, 256),
             nn.ReLU(),
-            nn.Linear(512, num_classes),
+            nn.Dropout(0.5),
+            nn.Linear(256, num_classes),
         )
         self.softmaxed_ = nn.Sequential(
             nn.Softmax(dim=1)  # 新增Softmax层

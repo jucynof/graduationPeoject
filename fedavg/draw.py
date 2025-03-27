@@ -4,16 +4,16 @@ import matplotlib.pyplot as plt
 # 读取数据
 data=pd.read_csv('./test_accuracy.csv', header=None).squeeze()
 # data1 = pd.read_csv('./Zero.csv', header=None).squeeze()
-data2 = pd.read_csv('C:/Users/JucyNof/Desktop/result/test_accuracy_lr=1e-5_clentepoch=10.csv', header=None).squeeze()
-data3 = pd.read_csv('C:/Users/JucyNof/Desktop/result/test_accuracy_lr=1e-5_clentepoch=10.csv', header=None).squeeze()
+# data2 = pd.read_csv('C:/Users/JucyNof/Desktop/result2/test_accuracy_lr=1e-5_clentepoch=10.csv', header=None).squeeze()
+# data3 = pd.read_csv('C:/Users/JucyNof/Desktop/result2/test_accuracy_lr=1e-5_clentepoch=10.csv', header=None).squeeze()
 
 # 统一横坐标
-max_length = max(len(data),len(data2), len(data3))
+max_length = max(len(data),0)
 x = range(max_length)
 data=data.reindex(x, fill_value=None)
 # data1 = data1.reindex(x, fill_value=None)
-data2 = data2.reindex(x, fill_value=None)
-data3 = data3.reindex(x, fill_value=None)
+# data2 = data2.reindex(x, fill_value=None)
+# data3 = data3.reindex(x, fill_value=None)
 
 # 绘图
 plt.figure(figsize=(10, 6))

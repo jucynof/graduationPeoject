@@ -143,10 +143,10 @@ if __name__ == "__main__":
     # clients与server之间通信
     w_attenaution=np.array([1 for i in range(config["num_clients"])],dtype=np.float32)#定义每个客户端的打分的衰减率
     x=0#定期保存训练的参数和acc
-    timesFixed = getTime(config)
+    timesFixed = getTime(config)#每个客户端的固定时间开销
     costs, costthreshold = getcost(config)
     for curr_round in range(lastRound+1, lastRound+rounds + 1):
-        timesFinal=getFinalTime(config,timesFixed[:],curr_round)
+        timesFinal=getFinalTime(config,timesFixed[:],curr_round)#添加每个客户每轮通信的随机开销
         scores=None
         local_loss = []
         client_params = {}
