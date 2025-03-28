@@ -10,10 +10,10 @@ class SimpleCNN(nn.Module):#适用于fashionminst
         torch.manual_seed(config['random_seed'])  # 设置PyTorch种子
         np.random.seed(config['random_seed'])
         self.conv_layers = nn.Sequential(
-            nn.Conv2d(in_channels, 32, 5, padding=2),  # 输出32x28x28
+            nn.Conv2d(in_channels, 32, 5, padding=2),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2, padding=0),  # 输出32x14x14
-            nn.Conv2d(32, 64, 5, padding=2),  # 输出64x14x14
+            nn.Conv2d(32, 64, 5, padding=2),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2, padding=0)   # 输出64x7x7
         )
@@ -34,7 +34,7 @@ class SimpleCNN(nn.Module):#适用于fashionminst
         x_softmaxed = self.softmaxed_(x)
         return x, x_softmaxed
 class EnhancedCNN(nn.Module):#增强cnn适用于cifar10
-    def __init__(self, in_channels=3, num_classes=10):
+    def __init__(self, config,in_channels=3, num_classes=10):
         super().__init__()
         self.features = nn.Sequential(
             nn.Conv2d(in_channels, 64, 3, padding=1),  # 64x32x32
@@ -48,12 +48,14 @@ class EnhancedCNN(nn.Module):#增强cnn适用于cifar10
             nn.Conv2d(128, 256, 3, padding=1),  # 256x8x8
             nn.BatchNorm2d(256),
             nn.ReLU(),
-            nn.AdaptiveAvgPool2d((1,1))  # 256x1x1
+            nn.MaxPool2d(2)# 256x4x4
+            # nn.AdaptiveAvgPool2d((1,1))  # 256x1x1
         )
         self.classifier = nn.Sequential(
             nn.Flatten(),
-            nn.Linear(256, 512),
-            nn.Dropout(0.5),
+            nn.Linear(256*4*4, 512),
+            nn.ReLU(),
+            nn.Dropout(0.1),
             nn.Linear(512, num_classes),
         )
         self.softmaxed_ = nn.Sequential(

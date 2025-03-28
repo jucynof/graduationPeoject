@@ -93,8 +93,6 @@ def getClientsForTrain(scores,times,costs,costThreshold,config):
         idChoosed.append(idChoosedCur)
     scoresFinal=np.array(scoresFinal)
     i = np.argsort(-scoresFinal)[:config["num_clients"]] # 输出得分最大的是哪一轮
-    # for j in range(10):
-    #     print(i[j*10], scoresFinal[i[j*10]])
     return idChoosed[i[0]]
 
 
