@@ -16,6 +16,27 @@
     "timesMax": 5.0,
     "costsMax": 2.0,
     "attenuationRate": 1,
+    "dataName": "cifar10",
     "glocalParameterPath": "./glocalParameter",
-    "lastRound": 0
+    "lastRound": 0,
+    "normalizeMeanTrain": [
+        0.4913996160030365,
+        0.482157438993454,
+        0.44653332233428955
+    ],
+    "normalizeStdTrain": [
+        0.24703224003314972,
+        0.24348512291908264,
+        0.26158785820007324
+    ],
+    "normalizeMeanTest": [
+        0.4942128360271454,
+        0.48513108491897583,
+        0.45040950179100037
+    ],
+    "normalizeStdTest": [
+        0.2466525137424469,
+        0.2428922802209854,
+        0.26159238815307617
+    ]
 }

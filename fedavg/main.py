@@ -39,7 +39,7 @@ if __name__ == "__main__":
     #模型实例化
     if config['dataName']=="fashionMinst":
         net = SimpleCNN(config)
-    elif config['dataName']=="enhancedCNN":
+    elif config['dataName']=="cifar10":
         net = EnhancedCNN(config)
     net = net.to(dev)
     # 定义损失函数
@@ -85,7 +85,7 @@ if __name__ == "__main__":
         print("重新训练")
         #未进行训练是的acc和loss
         accuracy = test_accuracy()
-        global_loss, global_acc = accuracy.test_accuracy(net, global_parameters, data.getTestData(), dev, loss_func)
+        global_loss, global_acc = accuracy.test_accuracy(net, global_parameters, data.getTestData(), dev, loss_func,config)
         print(
             '----------------------------------[Round: %d] accuracy: %f  loss: %f----------------------------------'
             % (0, global_acc, global_loss))
@@ -116,7 +116,7 @@ if __name__ == "__main__":
                                                       global_parameters=global_parameters,
                                                       trainDataSet=subTrainDateset, dev=dev)
             accuracy = test_accuracy()
-            loss[k], acc[k] = accuracy.test_accuracy(net, local_parameters[k], data.getTestData(), dev, loss_func)
+            loss[k], acc[k] = accuracy.test_accuracy(net, local_parameters[k], data.getTestData(), dev, loss_func,config)
         scores = Evaluate1(acc[:], loss[:], config["w"],w_attenaution[:])
         indices=getClientsForTrain(scores[:],timesFinal[:],costs[:],costthreshold,config)
         print("第%d轮次通信中选中的客户端为:"%(curr_round),indices)
@@ -156,7 +156,7 @@ if __name__ == "__main__":
         global_parameters = s.agg_average()
         net.load_state_dict(global_parameters, strict=True)
         accuracy = test_accuracy()
-        global_loss, global_acc = accuracy.test_accuracy(net, global_parameters, data.getTestData(), dev, loss_func)
+        global_loss, global_acc = accuracy.test_accuracy(net, global_parameters, data.getTestData(), dev, loss_func,config)
         print(
             '----------------------------------[Round: %d] accuracy: %f  loss: %f----------------------------------'
              % (curr_round, global_acc, global_loss))

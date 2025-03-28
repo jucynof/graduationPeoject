@@ -17,7 +17,7 @@ class test_accuracy:
         with torch.no_grad():
             for data, label in testDataLoader:
                 data, label = data.to(dev), label.to(dev)
-                output_train,output_test = net(data)
+                output_train,output_test = net(data)#output_train未经过softmax，out_test经过了softmax
                 # 计算损失
                 loss = lossFun(output_test, label)
                 batch_loss = loss.item()
