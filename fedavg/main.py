@@ -104,8 +104,8 @@ if __name__ == "__main__":
         acc = np.zeros(config["num_clients"])#用于打分保存的acc
         loss = np.zeros(config["num_clients"])#用于打分保存的loss
         #遍历所有模型，给所有客户端打分
-        local_parameters={}
-        for k in range(config["num_clients"]):
+        local_parameters = {}
+        for k in range(1):
             cur_client = client(config)
             subTrainDateset = Subset(data.getTrainData(), data.getDataIndices()[k])
             # 每个client训练得到的权重
@@ -115,16 +115,14 @@ if __name__ == "__main__":
                                                       lossFun=loss_func,
                                                       opti=opti,
                                                       global_parameters=global_parameters,
+                                                      #global_parameters=local_parameters[k],
                                                       trainDataSet=subTrainDateset, dev=dev)
+
             accuracy = test_accuracy()
             loss[k], acc[k] = accuracy.test_accuracy(net, local_parameters[k], data.getTestData(), dev, loss_func,config)
-        if config['trainMethold'] == "random":
-            config["attenuationRate"] = 1
-            indices = np.random.choice(numbers, int(config["num_clients"] * config["client_rate"]),
-                                       replace=True)  # 随机抽取
-        else:
-            scores = Evaluate1(acc[:], loss[:], config["w"], w_attenaution[:])
-            indices = getClientsForTrain(scores[:], timesFinal[:], costs[:], costthreshold, config)
+
+        scores = Evaluate1(acc[:], loss[:], config["w"], w_attenaution[:])
+        indices = getClientsForTrain(scores[:], timesFinal[:], costs[:], costthreshold, config)
         print("第%d轮次通信中选中的客户端为:"%(curr_round),indices)
         # print("他们的得分如下：")
         # for ind in indices:
