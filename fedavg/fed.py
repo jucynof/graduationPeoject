@@ -11,7 +11,10 @@ class client:
         self.localBatchSize=None
         self.score=None
     # 模型训练
-    def localUpdate(self, localEpoch, localBatchSize, Net, lossFun, opti, global_parameters, trainDataSet, dev):
+    def localUpdate(self, localEpoch,
+                    localBatchSize, Net, lossFun, opti,
+                    global_parameters,
+                    trainDataSet, dev):
         # localEpoch: 当前Client的迭代次数
         # localBatchSize: 当前Client的batchsize大小
         # Net: Server共享的模型
@@ -23,21 +26,21 @@ class client:
         # 并将global_parameters传入网络模型
         Net.load_state_dict(global_parameters, strict=True)
         # 加载本地数据, client自己的数据集
-        self.train_DataLoader = DataLoader(trainDataSet, batch_size=int(localBatchSize), shuffle=False)
+        self.train_DataLoader = DataLoader(trainDataSet, batch_size=localBatchSize, shuffle=True)
         self.dev = dev
-
         # 设置迭代次数
         for epoch in range(localEpoch):
             for data, label in self.train_DataLoader:
                 # 加载到GPU上
                 data, label = data.to(dev), label.to(dev)
-                # 将梯度归零，初始化梯度
-                opti.zero_grad()
                 # 模型上传入数据
-                output_train,output_test = Net(data)
+                output_train,_ = Net(data)
                 # 计算损失函数
                 loss = lossFun(output_train, label)
+                print(loss.item())
                 # 反向传播
+                # 将梯度归零，初始化梯度
+                opti.zero_grad()
                 loss.backward()
                 # 计算梯度，并更新梯度
                 opti.step()

@@ -252,9 +252,9 @@ class getData:
             else:
                 transform_raw = transforms.ToTensor()
 
-                train_dataset_raw = torchvision.datasets.FashionMNIST("./dataset", train=True, download=True,
+                train_dataset_raw = torchvision.datasets.CIFAR10("./dataset", train=True, download=True,
                                                                       transform=transform_raw)
-                test_dataset_raw = torchvision.datasets.FashionMNIST("./dataset", train=False, download=True,
+                test_dataset_raw = torchvision.datasets.CIFAR10("./dataset", train=False, download=True,
                                                                      transform=transform_raw)
                 # 计算训练集和测试集的均值和标准差
                 train_dataset_raw = (torch.tensor(train_dataset_raw.data).float())
@@ -286,9 +286,9 @@ class getData:
                 transforms.ToTensor(),
                 transforms.Normalize(mean=meanTest, std=stdTest)
             ])
-            self.train_dataset = torchvision.datasets.FashionMNIST("./dataset", train=True, download=True,
+            self.train_dataset = torchvision.datasets.CIFAR10("./dataset", train=True, download=True,
                                                                    transform=transformTrain)
-            self.test_dataset = torchvision.datasets.FashionMNIST("./dataset", train=False, download=True,
+            self.test_dataset = torchvision.datasets.CIFAR10("./dataset", train=False, download=True,
                                                                   transform=transformTest)
             self.data_indices = np.arange(len(self.train_dataset))
             np.random.seed(config["random_seed"])

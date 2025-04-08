@@ -5,7 +5,7 @@ import torch
 from torch import nn, optim
 import json
 from torch.utils.data import DataLoader, Subset,TensorDataset
-from models import SimpleCNN,EnhancedCNN
+from models import SimpleCNN,EnhancedCNN,CNNforFashionMinst
 from fed import client,server
 from getData import getData, getNoIIDData
 from utils import Evaluate1, getTime, getClientsForTrain, getcost, getFinalTime
@@ -13,7 +13,6 @@ from testaccuracy import test_accuracy
 with open("config.json") as f:
     config = json.load(f)
 f.close()
-
 
 if __name__ == "__main__":
     torch.manual_seed(config['random_seed'])  # 设置PyTorch种子
@@ -25,7 +24,6 @@ if __name__ == "__main__":
     else:
         print("Not IID")
         data = getNoIIDData(config)
-
     # ----------------------------------设置参数----------------------------------
     dev = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     print(dev)
@@ -37,14 +35,16 @@ if __name__ == "__main__":
     # numClientsChoosed=int(numClients*clientRate)
     # ----------------------------------初始化模型----------------------------------
     #模型实例化
+    net=None
     if config['dataName']=="fashionMinst":
-        net = SimpleCNN(config)
+        # net = SimpleCNN(config)
+        print("FashionMinst")
+        net =CNNforFashionMinst(config,in_channels=1).to(dev)
     elif config['dataName']=="cifar10":
-        net = EnhancedCNN(config)
-    net = net.to(dev)
+        print("CIFAR10")
+        net = EnhancedCNN(config,in_channels=3).to(dev)
     # 定义损失函数
-    loss_func = nn.CrossEntropyLoss()
-    loss_func = loss_func.to(dev)
+    loss_func = nn.CrossEntropyLoss().to(dev)
     # 定义优化器
     if config["isIID"]==1:
         lr=config["lrIID"]
@@ -110,15 +110,21 @@ if __name__ == "__main__":
             subTrainDateset = Subset(data.getTrainData(), data.getDataIndices()[k])
             # 每个client训练得到的权重
             local_parameters[k] = cur_client.localUpdate(localEpoch=config["localEpoch"],
-                                                      localBatchSize=config["batchSize"], Net=net,
+                                                      localBatchSize=config["batchSize"],
+                                                        Net=net,
                                                       lossFun=loss_func,
                                                       opti=opti,
                                                       global_parameters=global_parameters,
                                                       trainDataSet=subTrainDateset, dev=dev)
             accuracy = test_accuracy()
             loss[k], acc[k] = accuracy.test_accuracy(net, local_parameters[k], data.getTestData(), dev, loss_func,config)
-        scores = Evaluate1(acc[:], loss[:], config["w"],w_attenaution[:])
-        indices=getClientsForTrain(scores[:],timesFinal[:],costs[:],costthreshold,config)
+        if config['trainMethold'] == "random":
+            config["attenuationRate"] = 1
+            indices = np.random.choice(numbers, int(config["num_clients"] * config["client_rate"]),
+                                       replace=True)  # 随机抽取
+        else:
+            scores = Evaluate1(acc[:], loss[:], config["w"], w_attenaution[:])
+            indices = getClientsForTrain(scores[:], timesFinal[:], costs[:], costthreshold, config)
         print("第%d轮次通信中选中的客户端为:"%(curr_round),indices)
         # print("他们的得分如下：")
         # for ind in indices:

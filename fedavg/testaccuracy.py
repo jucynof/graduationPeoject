@@ -1,4 +1,6 @@
 # ----------------------------------在测试集上评估模型的性能, 计算准确率和平均损失----------------------------------
+import time
+
 import torch
 from torch.utils.data import DataLoader
 
@@ -7,7 +9,6 @@ class test_accuracy:
 
     def test_accuracy(self, net, parameters, testDataset, dev, lossFun,config):
         # 存储损失
-
         testDataLoader=DataLoader(testDataset, batch_size=config["batchSize"], shuffle=True)
         total_correct = 0
         total_samples = 0
@@ -17,9 +18,12 @@ class test_accuracy:
         with torch.no_grad():
             for data, label in testDataLoader:
                 data, label = data.to(dev), label.to(dev)
-                output_train,output_test = net(data)#output_train未经过softmax，out_test经过了softmax
+                output_test,_ = net(data)
                 # 计算损失
                 loss = lossFun(output_test, label)
+                # if loss>config["sixsixsix"]:
+                #     print("error",loss)
+                #     config["sixsixsix"]=int(loss)+1
                 batch_loss = loss.item()
                 batch_size = label.size(0)
                 total_loss += batch_loss * batch_size  # 累加加权损失
