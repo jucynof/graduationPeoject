@@ -1,32 +1,68 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 
-# 读取数据
-data=pd.read_csv('./test_accuracy.csv', header=None).squeeze()
-# data1 = pd.read_csv('./Zero.csv', header=None).squeeze()
-# data2 = pd.read_csv('C:/Users/JucyNof/Desktop/result2/test_accuracy_lr=1e-5_clentepoch=10.csv', header=None).squeeze()
-# data3 = pd.read_csv('C:/Users/JucyNof/Desktop/result2/test_accuracy_lr=1e-5_clentepoch=10.csv', header=None).squeeze()
+def drawOneTest():
+    # 读取数据
+    accuracy = pd.read_csv('./test_accuracy.csv', header=None).squeeze()
+    loss = pd.read_csv('./test_loss.csv', header=None).squeeze()
+    cost = pd.read_csv('./test_cost.csv', header=None).squeeze()
+    time = pd.read_csv('./test_time.csv', header=None).squeeze()
+    #建立坐标系
+    #横坐标
+    xAccuracy=range(len(accuracy))
+    xLoss=range(len(loss))
+    xCost=range(len(cost))
+    xTime=range(len(time))
+    #纵坐标
+    yAccuracy=accuracy.reindex(xAccuracy,fill_value=None)
+    yLoss=loss.reindex(xLoss,fill_value=None)
+    yCost=cost.reindex(xCost,fill_value=None)
+    yTime=time.reindex(xTime,fill_value=None)
 
-# 统一横坐标
-max_length = max(len(data),0)
-x = range(max_length)
-data=data.reindex(x, fill_value=None)
-# data1 = data1.reindex(x, fill_value=None)
-# data2 = data2.reindex(x, fill_value=None)
-# data3 = data3.reindex(x, fill_value=None)
+    # 绘图
+    plt.figure(figsize=(10, 6))
+    plt.plot(xAccuracy, yAccuracy, label='accuracy', color='#1f77b4', linestyle='-', linewidth=1.5)
+    plt.xlabel('comRounds', fontsize=12)
+    plt.ylabel('accuracy', fontsize=12)
+    plt.title('accuracy', fontsize=14)
+    plt.legend(loc='upper left')
+    plt.grid(True, alpha=0.3)
+    plt.savefig('accuracy.png', dpi=300)
+    plt.legend(loc='lower right')
+    plt.show()
 
-# 绘图
-plt.figure(figsize=(10, 6))
-plt.plot(x, data, label='test', color='#1f77b4', linestyle='-', linewidth=1.5)
-# plt.plot(x, data1, label='test 1', color='#1f77b4', linestyle='-', linewidth=1.5)
-# plt.plot(x, data2, label='test 2', color='#ff7f0e', linestyle='--', linewidth=1.5)
-# plt.plot(x, data3, label='test 3', color='#2ca02c', linestyle=':', linewidth=1.5)
 
-plt.xlabel('testRounds', fontsize=12)
-plt.ylabel('accuracy', fontsize=12)
-plt.title(' Tests Comparison', fontsize=14)
-plt.legend(loc='upper left')
-plt.grid(True, alpha=0.3)
-plt.savefig('result.png', dpi=300)
-plt.legend(loc='lower right')
-plt.show()
+    plt.figure(figsize=(10, 6))
+    plt.plot(xLoss, yLoss, label='loss', color='#1f77b4', linestyle='-', linewidth=1.5)
+    plt.xlabel('comRounds', fontsize=12)
+    plt.ylabel('loss', fontsize=12)
+    plt.title('loss', fontsize=14)
+    plt.legend(loc='upper left')
+    plt.grid(True, alpha=0.3)
+    plt.savefig('loss.png', dpi=300)
+    plt.legend(loc='lower right')
+    plt.show()
+
+    plt.figure(figsize=(10, 6))
+    plt.plot(xCost, yCost, label='cost', color='#1f77b4', linestyle='-', linewidth=1.5)
+    plt.xlabel('comRounds', fontsize=12)
+    plt.ylabel('cost', fontsize=12)
+    plt.title('cost', fontsize=14)
+    plt.legend(loc='upper left')
+    plt.grid(True, alpha=0.3)
+    plt.savefig('cost.png', dpi=300)
+    plt.legend(loc='lower right')
+    plt.show()
+
+    plt.figure(figsize=(10, 6))
+    plt.plot(xTime, yTime, label='time', color='#1f77b4', linestyle='-', linewidth=1.5)
+    plt.xlabel('comRounds', fontsize=12)
+    plt.ylabel('time', fontsize=12)
+    plt.title('time', fontsize=14)
+    plt.legend(loc='upper left')
+    plt.grid(True, alpha=0.3)
+    plt.savefig('time.png', dpi=300)
+    plt.legend(loc='lower right')
+    plt.show()
+if __name__ == '__main__':
+    drawOneTest()

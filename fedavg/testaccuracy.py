@@ -2,7 +2,7 @@
 import time
 
 import torch
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, random_split
 
 
 class test_accuracy:

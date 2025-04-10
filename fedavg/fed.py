@@ -10,6 +10,7 @@ class client:
         self.localEpoch=None
         self.localBatchSize=None
         self.score=None
+        self.max_norm = 0.5  # 设置梯度裁剪的阈值
     # 模型训练
     def localUpdate(self, localEpoch,
                     localBatchSize, Net, lossFun, opti,
@@ -37,11 +38,15 @@ class client:
                 output_train,_ = Net(data)
                 # 计算损失函数
                 loss = lossFun(output_train, label)
-                print(loss.item())
+                # print(loss.item())
                 # 反向传播
                 # 将梯度归零，初始化梯度
                 opti.zero_grad()
                 loss.backward()
+                
+                # 添加梯度裁剪
+                torch.nn.utils.clip_grad_norm_(Net.parameters(), self.max_norm)
+                
                 # 计算梯度，并更新梯度
                 opti.step()
         # 返回当前Client基于自己的数据训练得到的新的模型参数
@@ -57,7 +62,7 @@ class server:
         w = self.client_params
         weights_avg = w[0]
         for k in weights_avg.keys():
-            for i in range(0, len(w)):
+            for i in range(1, len(w)):
                 weights_avg[k] = weights_avg[k] + w[i][k]
             weights_avg[k] = weights_avg[k] / len(w)
         return weights_avg

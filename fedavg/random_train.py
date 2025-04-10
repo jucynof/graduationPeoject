@@ -9,6 +9,7 @@ from models import SimpleCNN,EnhancedCNN,CNNforFashionMinst
 from fed import client,server
 from getData import getData, getNoIIDData
 from testaccuracy import test_accuracy
+from utils import *
 with open("config.json") as f:
     config = json.load(f)
 f.close()
@@ -49,36 +50,19 @@ if __name__ == "__main__":
         lr=config["lrIID"]
     else:
         lr=config["lrNoIID"]
-    opti = optim.Adam(net.parameters(), lr=lr)
+    opti = optim.Adam(net.parameters(),lr=lr)
     # 定义变量global_parameters
     global_parameters = net.state_dict()
     # --# --------------------------------通信----------------------------------
     #储存每次通信accuracy
     accuracyGlobal=[]
     lossGlobal=[]
+    timeGlobal=[]
+    costGlobal=[]
     lastRound=0#上次关闭程序时通信轮次
     if os.path.exists(config["glocalParameterPath"]):#存在说明可以直接继续训练
-        print("衔接上次继续训练")
-        global_parameters = torch.load(config["glocalParameterPath"])
-        with open('./test_accuracy.csv', 'r') as file:#读取acc表方便继续更新
-            csv_reader = csv.reader(file)
-            for row in csv_reader:
-                try:
-                    # 转换为浮点数并保留精度
-                    accuracyGlobal.append(float(row[0].strip()))
-                except (ValueError, IndexError) as e:
-                    print(f"第{len(accuracyGlobal) + 1}行转换失败：{e}")
-                    accuracyGlobal.append(None)  # 保留空值标记异常数据
-        lastRound=config["lastRound"]
-        with open("./test_loss.csv",'r') as file:
-            csv_reader = csv.reader(file)
-            for row in csv_reader:
-                try:
-                    # 转换为浮点数并保留精度
-                    lossGlobal.append(float(row[0].strip()))
-                except (ValueError, IndexError) as e:
-                    print(f"第{len(lossGlobal) + 1}行转换失败：{e}")
-                    lossGlobal.append(None)  # 保留空值标记异常数据
+        global_parameters,accuracyGlobal,lossGlobal,timeGlobal,costGlobal,lastRound=connectLastTrain(config)
+        opti.load_state_dict(torch.load(config['optimizerPath']))
     else:
         # 通信前的accuracy
         print("重新训练")
@@ -92,8 +76,15 @@ if __name__ == "__main__":
         lossGlobal.append(global_loss)
     # clients与server之间通信
     x=0#定期保存训练的参数和acc
+    timesFixed = getTime(config)#每个客户端的固定时间开销
+    costs, costthreshold = getcost(config)
+
     for curr_round in range(lastRound+1, lastRound+rounds + 1):
+        cur_time=[]
+        cur_cost=0
+        timesFinal = getFinalTime(config, timesFixed[:], curr_round)  # 添加每个客户每轮通信的随机开销
         local_loss = []
+        #timesFinal=timesFixed
         client_params = {}
         #遍历所有模型，给所有客户端打分
         local_parameters={}
@@ -104,36 +95,6 @@ if __name__ == "__main__":
         for k in range(len(idChoosed)):
             cur_client = client(config)
             subTrainDateset = Subset(data.getTrainData(), data.getDataIndices()[idChoosed[k]])
-
-
-            # # ###########################
-            # train_loader = DataLoader(subTrainDateset, batch_size=64, shuffle=True)
-            # for epoch in range(100):
-            #     net.train()
-            #     running_loss = 0.0
-            #     sumcorrect = 0
-            #     total = 0
-            #     for images, labels in train_loader:
-            #         # 将数据移动到GPU
-            #         images, labels = images.to(dev), labels.to(dev)
-            #         # 前向传播
-            #         outputs,_ = net(images)
-            #         loss = loss_func(outputs, labels)
-            #         print("loss:", loss.item())
-            #         # 反向传播和优化
-            #         opti.zero_grad()
-            #         loss.backward()
-            #         opti.step()
-            #         running_loss += loss.item()
-            #         preds = torch.argmax(outputs, dim=1)
-            #         correct = (preds == labels).sum().item()
-            #         sumcorrect += correct
-            #         total += labels.size(0)
-            #     print(
-            #         f'Epoch [{epoch + 1}/{100}], Loss: {running_loss / total:.4f}, Accuracy: {sumcorrect / total:.4f}')
-            #
-            #
-            # ############################
             # 每个client训练得到的权重
             local_parameters = cur_client.localUpdate(localEpoch=config["localEpoch"], localBatchSize=config["batchSize"], Net=net,
                                                      lossFun=loss_func,
@@ -141,25 +102,43 @@ if __name__ == "__main__":
                                                      global_parameters=global_parameters,
                                                      trainDataSet=subTrainDateset, dev=dev)
             client_params[k] = local_parameters
+            cur_time.append(timesFinal[idChoosed[k]])
+            cur_cost+=costs[idChoosed[k]]
         # 取平均值，得到本次通信中server得到的更新后的模型参数
+        if curr_round==100:
+            for param_group in opti.param_groups:
+                param_group['lr'] = 0.001
+        elif curr_round==200:
+            for param_group in opti.param_groups:
+                param_group['lr'] = 0.0001
+        elif curr_round==300:
+            for param_group in opti.param_groups:
+                param_group['lr'] = 0.00001
         s = server(client_params,config=config)
         global_parameters = s.agg_average()
         net.load_state_dict(global_parameters, strict=True)
         accuracy = test_accuracy()
         global_loss, global_acc = accuracy.test_accuracy(net, global_parameters, data.getTestData(), dev, loss_func,config)
         print(
-            '----------------------------------[Round: %d] accuracy: %f  loss: %f----------------------------------'
-             % (curr_round, global_acc, global_loss))
+            '----------------------------------[Round: %d] accuracy: %f  loss: %f time :%.16f cost:%d----------------------------------'
+             % (curr_round, global_acc, global_loss, np.max(cur_time), cur_cost))
         accuracyGlobal.append(global_acc)
         lossGlobal.append(global_loss)
+        timeGlobal.append(np.max(cur_time))
+        costGlobal.append(cur_cost)
         #定期将参数和acc保存
         x=x+1
         if x % 10 == 0:
             torch.save(net.state_dict(), config["glocalParameterPath"])
+            torch.save(opti.state_dict(), config["optimizerPath"])
             listaccuracy = np.array(accuracyGlobal)
             listloss = np.array(lossGlobal)
+            listtime = np.array(timeGlobal)
+            listcost = np.array(costGlobal)
             np.savetxt('./test_accuracy.csv', listaccuracy.reshape(-1, 1), delimiter=',', fmt='%.4f')
             np.savetxt('./test_loss.csv', listloss.reshape(-1, 1), delimiter=',', fmt='%.6f')
+            np.savetxt('./test_time.csv', listtime.reshape(-1, 1), delimiter=',', fmt='%.16f')
+            np.savetxt('./test_cost.csv', listcost.reshape(-1, 1), delimiter=',', fmt='%d')
             config["lastRound"] = curr_round
             with open('config.json', 'w', encoding='utf-8') as f:
                 json.dump(config, f, ensure_ascii=False, indent=4)

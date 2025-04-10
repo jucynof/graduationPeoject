@@ -79,7 +79,6 @@ class getNoIIDData:
                 proportions = np.random.dirichlet(alpha=[config["alpha"]] * config["num_clients"])
                 # 根据比例计算各客户端分得的样本数量
                 proportions = (proportions * len(cls_idx)).astype(int)
-
                 # 由于取整可能导致总数不匹配，需要修正分配数量
                 diff = len(cls_idx) - np.sum(proportions)
                 # 将剩余的样本随机分配给一些客户端
@@ -167,7 +166,6 @@ class getNoIIDData:
                 # 将剩余的样本随机分配给一些客户端
                 for i in range(diff):
                     proportions[i % config["num_clients"]] += 1
-
                 # 按照计算好的数量划分数据，并添加到对应客户端
                 start = 0
                 for client in range(config["num_clients"]):

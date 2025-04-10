@@ -4,11 +4,11 @@ import numpy as np
 import torch
 from torch import nn, optim
 import json
-from torch.utils.data import DataLoader, Subset,TensorDataset
+from torch.utils.data import DataLoader, Subset, TensorDataset, random_split
 from models import SimpleCNN,EnhancedCNN,CNNforFashionMinst
 from fed import client,server
 from getData import getData, getNoIIDData
-from utils import Evaluate1, getTime, getClientsForTrain, getcost, getFinalTime
+from utils import Evaluate1, getTime, getClientsForTrain, getcost, getFinalTime,connectLastTrain
 from testaccuracy import test_accuracy
 with open("config.json") as f:
     config = json.load(f)
@@ -51,35 +51,19 @@ if __name__ == "__main__":
     else:
         lr=config["lrNoIID"]
     opti = optim.Adam(net.parameters(), lr=lr)
+
     # 定义变量global_parameters
     global_parameters = net.state_dict()
     # --# --------------------------------通信----------------------------------
     #储存每次通信accuracy
     accuracyGlobal=[]
     lossGlobal=[]
+    timeGlobal = []
+    costGlobal = []
     lastRound=0#上次关闭程序时通信轮次
     if os.path.exists(config["glocalParameterPath"]):#存在说明可以直接继续训练
-        print("衔接上次继续训练")
-        global_parameters = torch.load(config["glocalParameterPath"])
-        with open('./test_accuracy.csv', 'r') as file:#读取acc表方便继续更新
-            csv_reader = csv.reader(file)
-            for row in csv_reader:
-                try:
-                    # 转换为浮点数并保留精度
-                    accuracyGlobal.append(float(row[0].strip()))
-                except (ValueError, IndexError) as e:
-                    print(f"第{len(accuracyGlobal) + 1}行转换失败：{e}")
-                    accuracyGlobal.append(None)  # 保留空值标记异常数据
-        lastRound=config["lastRound"]
-        with open("./test_loss.csv",'r') as file:
-            csv_reader = csv.reader(file)
-            for row in csv_reader:
-                try:
-                    # 转换为浮点数并保留精度
-                    lossGlobal.append(float(row[0].strip()))
-                except (ValueError, IndexError) as e:
-                    print(f"第{len(lossGlobal) + 1}行转换失败：{e}")
-                    lossGlobal.append(None)  # 保留空值标记异常数据
+        global_parameters,accuracyGlobal,lossGlobal,timeGlobal,costGlobal,lastRound=connectLastTrain(config)
+        opti.load_state_dict(torch.load(config['optimizerPath']))
     else:
         # 通信前的accuracy
         print("重新训练")
@@ -98,18 +82,21 @@ if __name__ == "__main__":
     costs, costthreshold = getcost(config)
     for curr_round in range(lastRound+1, lastRound+rounds + 1):
         timesFinal=getFinalTime(config,timesFixed[:],curr_round)#添加每个客户每轮通信的随机开销
+        #timesFinal=timesFixed
         scores=None
+        cur_time=[]
+        cur_cost=0
         local_loss = []
         client_params = {}
         acc = np.zeros(config["num_clients"])#用于打分保存的acc
         loss = np.zeros(config["num_clients"])#用于打分保存的loss
         #遍历所有模型，给所有客户端打分
         local_parameters = {}
-        for k in range(1):
+        for k in range(config["num_clients"]):
             cur_client = client(config)
             subTrainDateset = Subset(data.getTrainData(), data.getDataIndices()[k])
             # 每个client训练得到的权重
-            local_parameters[k] = cur_client.localUpdate(localEpoch=config["localEpoch"],
+            local_parameters[k] = cur_client.localUpdate(localEpoch=3,
                                                       localBatchSize=config["batchSize"],
                                                         Net=net,
                                                       lossFun=loss_func,
@@ -117,10 +104,19 @@ if __name__ == "__main__":
                                                       global_parameters=global_parameters,
                                                       #global_parameters=local_parameters[k],
                                                       trainDataSet=subTrainDateset, dev=dev)
-
             accuracy = test_accuracy()
-            loss[k], acc[k] = accuracy.test_accuracy(net, local_parameters[k], data.getTestData(), dev, loss_func,config)
-
+            testDataset=data.getTestData()
+            # 计算拆分比例（10%作为子集）
+            subset_size = int(len(testDataset) * 0.1)
+            remainder_size = len(testDataset) - subset_size
+            # 随机分割数据集
+            test_subset, _ = random_split(
+                testDataset,
+                [subset_size, remainder_size],
+                generator=torch.Generator().manual_seed(config["random_seed"]+curr_round)  # 固定随机种子
+            )
+            loss[k], acc[k] = accuracy.test_accuracy(net, local_parameters[k], test_subset, dev, loss_func,config)
+        # print(acc)
         scores = Evaluate1(acc[:], loss[:], config["w"], w_attenaution[:])
         indices = getClientsForTrain(scores[:], timesFinal[:], costs[:], costthreshold, config)
         print("第%d轮次通信中选中的客户端为:"%(curr_round),indices)
@@ -133,47 +129,68 @@ if __name__ == "__main__":
                 w_attenaution[i]=w_attenaution[i]*config["attenuationRate"]
             else:
                 w_attenaution[i]=1
-        #idChoosed = np.random.choice(numbers, numClientsChoosed, replace=True)#随机抽取
         idChoosed=indices#根据得分抽取
         # 将选择出的客户端训练参数用于更新全局参数
-        j=0
+        # j=0
+        # for i in idChoosed:
+        #     cur_time.append(timesFinal[i])
+        #     cur_cost += costs[i]
+        #     client_params[j]=local_parameters[i]
+        #     j=j+1
+        # for k in range(int(config["num_clients"]*config["client_rate"])):
+        j = 0
         for i in idChoosed:
-            client_params[j]=local_parameters[i]
-            j=j+1
-        # for k in range(numClientsChoosed):
-        #
-        #     cur_client = client(config)
-        #     subTrainDateset = Subset(data.getTrainData(), data.getDataIndices()[idChoosed[k]])
-        #     # 每个client训练得到的权重
-        #     local_parameters = cur_client.localUpdate(localEpoch=config["localEpoch"], localBatchSize=config["batchSize"], Net=net,
-        #                                              lossFun=loss_func,
-        #                                              opti=opti,
-        #                                              global_parameters=global_parameters,
-        #                                              trainDataSet=subTrainDateset, dev=dev)
-        #     client_params[k] = local_parameters
-            # accuracy = test_accuracy()
-            # local_loss, local_acc = accuracy.test_accuracy(net, local_parameters, data.getTestData(), dev, loss_func)
-            #if curr_round % 10 == 0:
-           # print('[Round: %d Client: %d] accuracy: %f  loss: %f ' % (curr_round, idChoosed[k], local_acc, local_loss))
+            cur_time.append(timesFinal[i])
+            cur_cost += costs[i]
+            cur_client = client(config)
+            subTrainDateset = Subset(data.getTrainData(), data.getDataIndices()[i])
+            # 每个client训练得到的权重
+            local_parameters = cur_client.localUpdate(localEpoch=config["localEpoch"],
+                                                      localBatchSize=config["batchSize"],
+                                                      Net=net,
+                                                     lossFun=loss_func,
+                                                     opti=opti,
+                                                     global_parameters=global_parameters,
+                                                     trainDataSet=subTrainDateset, dev=dev)
+            client_params[j] = local_parameters
+            j+=1
         # 取平均值，得到本次通信中server得到的更新后的模型参数
-        s = server(client_params,config=config)
+        s = server(client_params, config=config)
         global_parameters = s.agg_average()
         net.load_state_dict(global_parameters, strict=True)
         accuracy = test_accuracy()
         global_loss, global_acc = accuracy.test_accuracy(net, global_parameters, data.getTestData(), dev, loss_func,config)
         print(
-            '----------------------------------[Round: %d] accuracy: %f  loss: %f----------------------------------'
-             % (curr_round, global_acc, global_loss))
+            '----------------------------------[Round: %d] accuracy: %f  loss: %f time :%.16f cost:%d----------------------------------'
+             % (curr_round, global_acc, global_loss, np.max(cur_time), cur_cost))
         accuracyGlobal.append(global_acc)
         lossGlobal.append(global_loss)
+        timeGlobal.append(np.max(cur_time))
+        costGlobal.append(cur_cost)
+        #更新学习率
+        if curr_round==100:
+            for param_group in opti.param_groups:
+                param_group['lr'] = 0.001
+        elif curr_round==200:
+            for param_group in opti.param_groups:
+                param_group['lr'] = 0.0001
+        elif curr_round==300:
+            for param_group in opti.param_groups:
+                param_group['lr'] = 0.00001
+
         #定期将参数和acc保存
         x=x+1
         if x % 10 == 0:
             torch.save(net.state_dict(), config["glocalParameterPath"])
+            torch.save(opti.state_dict(), config["optimizerPath"])
             listaccuracy = np.array(accuracyGlobal)
             listloss = np.array(lossGlobal)
+            listtime = np.array(timeGlobal)
+            listcost = np.array(costGlobal)
             np.savetxt('./test_accuracy.csv', listaccuracy.reshape(-1, 1), delimiter=',', fmt='%.4f')
             np.savetxt('./test_loss.csv', listloss.reshape(-1, 1), delimiter=',', fmt='%.6f')
+            np.savetxt('./test_time.csv', listtime.reshape(-1, 1), delimiter=',', fmt='%.16f')
+            np.savetxt('./test_cost.csv', listcost.reshape(-1, 1), delimiter=',', fmt='%d')
             config["lastRound"] = curr_round
             with open('config.json', 'w', encoding='utf-8') as f:
                 json.dump(config, f, ensure_ascii=False, indent=4)
